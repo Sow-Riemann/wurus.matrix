@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#04141b">
+<title>wurus.matrix.v11</title>
+<style>
+  :root{
+    /* theme colors — recomputed by the colour slider (see applyTheme) */
+    --bg:#04141b; --bg2:#08222d; --surface:#082530; --surface2:#03111a;
+    --line:#14515f; --line2:#0e3946;
+    --glow:hsl(186 90% 45% / 0.16); --accent:hsl(186 90% 62%);
+    /* fixed palette */
+    --gold:#d4af37; --gold-light:#f0d878; --gold-dark:#8a6f1f;
+    --silver:#9aa0aa; --silver-dim:#4a4e56; --text:#e8e6e0; --muted:#8a8e96;
+    --green:#4ade80; --red:#f87171; --amber:#fbbf24; --quantum:#ffd86b;
+    --mono:'SF Mono','Consolas','Courier New',monospace;
+    --serif:'Playfair Display','Georgia',serif;
+    --script:'Snell Roundhand','Apple Chancery','Zapfino','Segoe Script','Lucida Handwriting','Brush Script MT','URW Chancery L','Z003','Dancing Script',cursive;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html{background:var(--bg);}
+  html,body{margin:0;padding:0;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent;}
+  body{display:flex;justify-content:center;min-height:100vh;padding:0 0 30px;
+    background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);}
+  .app{width:100%;max-width:460px;}
+  button{font:inherit;}
+
+  /* shared metallic mesh texture (gold + grid) */
+  .mesh-surface{
+    background-image:
+      repeating-linear-gradient(45deg,var(--mline) 0 1px,transparent 1px 5px),
+      repeating-linear-gradient(-45deg,var(--mline) 0 1px,transparent 1px 5px),
+      radial-gradient(circle at 18% 22%,var(--m1) 0,transparent 46%),
+      radial-gradient(circle at 82% 28%,var(--m2) 0,transparent 50%),
+      radial-gradient(circle at 50% 115%,var(--m3) 0,transparent 62%),
+      linear-gradient(180deg,var(--m4),var(--m5));
+  }
+  .mesh-gold{--mline:rgba(80,55,0,0.20);--m1:#fff3b4;--m2:#f7dc74;--m3:#7a5a12;--m4:#e6c14e;--m5:#a67c1e;}
+
+  /* ================= HEADER ================= */
+  .header{
+    position:relative;overflow:hidden;
+    padding:50px 16px 18px;text-align:center;
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(ellipse at 50% 0%,var(--glow) 0%,transparent 62%),
+      radial-gradient(ellipse at 50% 0%,rgba(212,175,55,0.07) 0%,transparent 60%),
+      var(--bg);
+  }
+  .binary-field{
+    position:absolute;inset:0;font-family:var(--mono);font-size:10px;line-height:14px;
+    color:var(--silver-dim);opacity:0.35;overflow:hidden;white-space:pre;letter-spacing:2px;
+    user-select:none;pointer-events:none;
+    -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.5) 60%,transparent 100%);
+    mask-image:linear-gradient(180deg,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.5) 60%,transparent 100%);
+  }
+  .header-content{position:relative;z-index:2;}
+
+  /* colour theme slider (top-left) */
+  .theme-ctl{
+    position:absolute;top:10px;left:12px;z-index:5;display:flex;align-items:center;
+    padding:9px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+  }
+  #themeSlider{
+    -webkit-appearance:none;appearance:none;width:92px;height:8px;margin:0;border-radius:999px;
+    outline:none;cursor:pointer;border:1px solid rgba(255,255,255,0.22);
+    background:linear-gradient(90deg,hsl(190,85%,30%) 0%,hsl(240,60%,40%) 25%,hsl(290,55%,44%) 50%,hsl(322,62%,40%) 75%,hsl(352,70%,28%) 100%);
+  }
+  #themeSlider::-webkit-slider-thumb{
+    -webkit-appearance:none;width:20px;height:20px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 35% 30%,#fff3b4,#d4af37 60%,#8a6f1f);
+    border:1px solid #6b5316;box-shadow:0 0 8px rgba(212,175,55,0.6);
+  }
+  #themeSlider::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;cursor:pointer;
+    background:radial-gradient(circle at 35% 30%,#fff3b4,#d4af37 60%,#8a6f1f);
+    border:1px solid #6b5316;box-shadow:0 0 8px rgba(212,175,55,0.6);
+  }
+  #themeSlider::-moz-range-track{background:transparent;height:8px;}
+
+  /* language switch (top-right) */
+  .lang-btn{
+    position:absolute;top:10px;right:12px;z-index:5;
+    display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--silver);
+  }
+  .lang-btn .flag{width:26px;height:18px;border-radius:3px;overflow:hidden;opacity:0.38;
+    transition:opacity .2s, box-shadow .2s;box-shadow:0 0 0 1px rgba(255,255,255,0.12);display:block;}
+  .lang-btn .flag.active{opacity:1;box-shadow:0 0 0 1.5px var(--gold);}
+  .lang-btn .flag svg{display:block;width:100%;height:100%;}
+  .lang-btn .swap{width:14px;height:14px;}
+
+  /* WURUS — gold ingot lettering: extruded depth + metallic mesh face + glint */
+  .brand{position:relative;display:inline-block;margin-bottom:42px;}
+  .ingot{
+    display:inline-grid;font-family:var(--serif);font-size:44px;font-weight:800;letter-spacing:7px;
+    line-height:1.05;padding-left:7px;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.55));
+  }
+  .ingot-layer{grid-area:1 / 1;white-space:nowrap;}
+  .ingot-depth{
+    color:#6b4a06;
+    text-shadow:1px 1px 0 #7d5807,2px 2px 0 #765209,3px 3px 0 #6d4b07,4px 4px 0 #634405,5px 5px 0 #573a04,6px 6px 0 #4a3003;
+  }
+  .ingot-face{
+    color:var(--gold);
+    background-image:
+      repeating-linear-gradient(45deg,rgba(70,45,0,0.34) 0 1px,transparent 1px 4px),
+      repeating-linear-gradient(-45deg,rgba(70,45,0,0.34) 0 1px,transparent 1px 4px),
+      radial-gradient(circle at 20% 18%,rgba(255,255,255,0.55) 0,transparent 40%),
+      linear-gradient(180deg,#fff4b8 0%,#f3d569 22%,#c9982e 46%,#9d6f10 52%,#dcae3c 76%,#f7df8c 100%);
+  }
+  .ingot-shine{
+    color:transparent;
+    background-image:linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.85) 50%,transparent 58%);
+    background-size:260% 100%;background-position:130% 0;background-repeat:no-repeat;
+    animation:glint 6.5s ease-in-out infinite;
+  }
+  @keyframes glint{0%,55%{background-position:130% 0}100%{background-position:-30% 0}}
+  @supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .ingot-face,.ingot-shine{
+      -webkit-background-clip:text;background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    .ingot-face{-webkit-text-stroke:0.8px rgba(255,246,196,0.8);}
+  }
+
+  /* pyramid whose tiers twist like the layers of a Rubik's cube */
+  .pyr-scene{position:absolute;top:calc(100% - 6px);width:44px;height:42px;margin-left:-22px;perspective:230px;pointer-events:none;}
+  .pyr{position:absolute;left:0;top:0;width:44px;height:42px;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-32deg);}
+  .tier{
+    position:absolute;left:50%;height:9px;width:var(--w);margin-left:calc(var(--w) / -2);
+    transform-style:preserve-3d;transition:transform .85s cubic-bezier(.55,-0.25,.25,1.25);
+  }
+  .tier .f{
+    position:absolute;left:0;top:0;width:var(--w);height:9px;border:0.5px solid rgba(60,38,0,0.6);
+    background-image:
+      repeating-linear-gradient(45deg,rgba(60,40,0,0.22) 0 1px,transparent 1px 4px),
+      repeating-linear-gradient(-45deg,rgba(60,40,0,0.22) 0 1px,transparent 1px 4px),
+      linear-gradient(180deg,var(--fa),var(--fb));
+  }
+  .f.front{--fa:#fbe9a0;--fb:#d9a936;transform:translateZ(calc(var(--w) / 2));}
+  .f.right{--fa:#eef2f8;--fb:#a9b3c2;transform:rotateY(90deg) translateZ(calc(var(--w) / 2));}
+  .f.back {--fa:#f4bba6;--fb:#c9775e;transform:rotateY(180deg) translateZ(calc(var(--w) / 2));}
+  .f.left {--fa:#c58a1f;--fb:#8a5f0d;transform:rotateY(-90deg) translateZ(calc(var(--w) / 2));}
+  .f.top  {--fa:#fff4c2;--fb:#f2d066;height:var(--w);top:calc((9px - var(--w)) / 2);transform:rotateX(90deg) translateZ(4.5px);}
+
+  /* MATRIX — split-flap airport board */
+  .matrix-flap{display:inline-flex;gap:5px;perspective:420px;margin:0 0 12px;}
+  .tile{
+    position:relative;width:34px;height:48px;border-radius:5px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,0.07) 0%,rgba(0,0,0,0.38) 49%,rgba(0,0,0,0.6) 51%,rgba(255,255,255,0.03) 100%),
+      var(--surface);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10),0 0 16px rgba(255,255,255,0.10);
+  }
+  .tile::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;z-index:1;
+    background:rgba(0,0,0,0.95);box-shadow:0 1px 0 rgba(255,255,255,0.10);}
+  .tile .ch{
+    display:inline-block;font-family:var(--mono);font-weight:800;font-size:32px;line-height:1;color:#fff;
+    text-shadow:0 0 5px #fff,0 0 14px rgba(255,255,255,0.8),0 0 32px rgba(170,200,255,0.6);
+    transform-origin:50% 50%;position:relative;z-index:2;
+  }
+  .tile .ch.flip{animation:flip .09s ease-in-out;}
+  @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(88deg)}100%{transform:rotateX(0)}}
+
+  .tagline{
+    font-family:var(--script);font-size:24px;line-height:1.2;letter-spacing:0.5px;color:var(--gold-light);
+    margin:0 0 12px;text-shadow:0 0 12px rgba(212,175,55,0.35),0 1px 0 rgba(0,0,0,0.5);
+  }
+  .theorem-line{
+    font-family:var(--mono);font-size:12.5px;color:var(--text);line-height:1.65;
+    border-top:1px solid var(--line);padding-top:12px;
+  }
+  .theorem-line .eq{color:var(--gold-light);font-weight:600;}
+  .theorem-line .cond{color:var(--muted);font-size:11px;display:block;margin-top:3px;}
+
+  /* ================= BOARD — aircraft/chronograph dial shape, not a plain rectangle ================= */
+  .board-shell{
+    margin:18px 16px 0;padding:8px;border-radius:34px / 30px;
+    background:linear-gradient(155deg,#eef0f2 0%,#c9ccd1 24%,#9a9ea6 50%,#c9ccd1 76%,#eef0f2 100%);
+    box-shadow:0 10px 26px rgba(0,0,0,0.45),inset 0 0 0 1px rgba(255,255,255,0.5);
+  }
+  .board-shell::before{
+    content:'';display:block;position:relative;height:0;
+  }
+  .board{
+    position:relative;background:#ffffff;border-radius:28px / 24px;padding:16px 20px 14px;
+    box-shadow:inset 0 0 0 1px var(--gold-dark),inset 0 2px 10px rgba(0,0,0,0.08);
+  }
+  .board::before, .board::after{
+    content:'';position:absolute;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff,#9a9ea6 70%);box-shadow:0 0 0 1px rgba(0,0,0,0.15);
+  }
+  .board::before{left:-4.5px;} .board::after{right:-4.5px;}
+  .board label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:#8a7239;margin-bottom:8px;}
+  .board textarea{
+    width:100%;background:#ffffff;border:none;outline:none;resize:vertical;min-height:64px;max-height:220px;
+    font-family:var(--mono);font-size:17px;color:#111;word-break:break-all;line-height:1.5;
+  }
+  .board-hint{font-family:var(--mono);font-size:10px;color:#a89b6f;margin-top:6px;text-align:right;}
+  .board-digits{font-family:var(--mono);font-size:10px;color:#8a7239;text-align:right;min-height:13px;margin-bottom:2px;font-weight:700;}
+  .board-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .board-top label{margin-bottom:0;}
+  .board-msg{
+    font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:0.3px;color:#c23a3a;
+    margin-top:6px;text-align:right;min-height:13px;
+  }
+  /* rejection signal: a fine elegant red glow on the board's inner edge — no bulky border */
+  .board.rejected{
+    box-shadow:inset 0 0 0 1px #e14b4b,inset 0 0 12px rgba(225,75,75,0.55),inset 0 0 0 2.5px rgba(225,75,75,0.16);
+    transition:box-shadow .18s ease-out;
+  }
+  .board{ transition:box-shadow .18s ease-out; }
+
+  /* ================= ACTIONS ================= */
+  .action-row{display:flex;justify-content:center;align-items:center;gap:16px;margin:22px 16px 0;}
+
+  /* RESET — round steel button, mirrors the throttle's metal finish */
+  .btn-reset{
+    width:46px;height:46px;border-radius:50%;flex-shrink:0;cursor:pointer;
+    border:1px solid rgba(0,0,0,0.35);color:#d7dbe2;
+    background:
+      radial-gradient(circle at 32% 28%,rgba(255,255,255,0.35),transparent 55%),
+      linear-gradient(180deg,#3a3f47,#191b1e 55%,#0c0d0f);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12),inset 0 -2px 4px rgba(0,0,0,0.5),0 2px 6px rgba(0,0,0,0.4);
+    display:flex;align-items:center;justify-content:center;
+    transition:box-shadow .2s,color .2s;
+  }
+  .btn-reset svg{width:19px;height:19px;}
+  .btn-reset:active{box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12),inset 0 1px 5px rgba(0,0,0,0.6);}
+  .btn-reset:disabled{opacity:0.4;cursor:not-allowed;}
+
+  /* SOW / STOP — one button, flips top-to-bottom like a drum-cabinet door */
+  .sow-scene{perspective:340px;position:relative;}
+  .btn-mesh{
+    position:relative;border:none;cursor:pointer;border-radius:999px;padding:12px 20px;min-width:128px;height:50px;
+    font-family:var(--serif);font-weight:700;font-size:22px;letter-spacing:3px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .btn-mesh:active{transform:translateY(1px);}
+  .btn-mesh .txt{display:inline-block;white-space:nowrap;position:relative;z-index:2;}
+  /* SOW — a solid gold ingot/die block: same mesh-gold texture and bevelled
+     facet logic as the WURUS lettering and the pyramid tiers, so the three
+     gold elements read as one family of material. The button box itself
+     never moves (so it stays perfectly tappable) — only a light sweep
+     travels across its surface, like light catching a slowly turning
+     ingot, giving the rotation impression without an unstable hitbox. */
+  .btn-sow{
+    color:#1a1400;--ufo-light:#fff6c8;
+    box-shadow:
+      0 3px 0 #6b4a06, 0 5px 0 #5a3d05, 0 7px 10px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -3px 5px rgba(122,92,6,0.5);
+    overflow:hidden;
+  }
+  .btn-sow::before{
+    content:'';position:absolute;inset:0;border-radius:999px;pointer-events:none;
+    background:linear-gradient(100deg,transparent 40%,rgba(255,255,255,0.7) 50%,transparent 60%);
+    background-size:250% 100%;background-position:130% 0;mix-blend-mode:overlay;
+    animation:sow-glint 6.5s ease-in-out infinite;
+  }
+  @keyframes sow-glint{
+    0%,55%{background-position:130% 0;}
+    100%{background-position:-30% 0;}
+  }
+  .btn-stop{
+    --mline:rgba(0,0,0,0.28);--m1:#ff9d9d;--m2:#ef5350;--m3:#3d0b0b;--m4:#c62828;--m5:#7a1212;
+    color:#fff;box-shadow:0 3px 12px rgba(239,83,80,0.40),inset 0 1px 0 rgba(255,255,255,0.35);
+    position:absolute;inset:0;
+  }
+  .stop-square{width:17px;height:17px;border-radius:3px;background:#fff;box-shadow:0 0 9px rgba(255,255,255,0.7);}
+  /* saucer used as the "O" of SOW: same colour and cap-height as S and W */
+  .ufo{display:inline-block;width:1.7em;height:1em;vertical-align:-0.107em;margin:0 0.03em 0 0.02em;overflow:visible;
+    filter:drop-shadow(0 0 2px var(--ufo-light));position:relative;z-index:2;}
+  /* the cabinet tilts for a drum-door feel; the visible face is swapped via [hidden], not via
+     backface-visibility, since nested 3D transforms make the flipped face non-hit-testable
+     in some engines — this keeps the flourish purely cosmetic and the click target reliable */
+  .drum-cabinet{
+    position:relative;width:128px;height:50px;transform-style:preserve-3d;
+    transition:transform .5s cubic-bezier(.5,-0.28,.25,1.28);
+  }
+  .drum-cabinet.flipping{transform:rotateX(90deg) !important;}
+  @media (prefers-reduced-motion: reduce){
+    .btn-sow::before{animation:none;}
+  }
+
+  /* MOBILE / QUANTUM throttle lever with luminous track */
+  .throttle-ctl{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .throttle-icons{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .throttle-icons svg{width:19px;height:19px;color:var(--line2);opacity:0.55;transition:color .3s,opacity .3s,filter .3s;flex-shrink:0;}
+  .throttle-icons svg.on{color:var(--accent);opacity:1;filter:drop-shadow(0 0 5px var(--accent));}
+  .throttle{
+    position:relative;width:30px;height:64px;border-radius:15px;cursor:pointer;border:none;padding:0;
+    background:linear-gradient(180deg,#050607,#0c0e10 40%,#050607);
+    box-shadow:inset 0 0 0 1px var(--line2),inset 0 2px 6px rgba(0,0,0,0.6);
+  }
+  .throttle:disabled{opacity:0.5;cursor:not-allowed;}
+  .throttle-slot{position:absolute;left:50%;top:7px;bottom:7px;width:4px;margin-left:-2px;border-radius:3px;
+    background:linear-gradient(180deg,var(--quantum),var(--line2) 46%,var(--accent));opacity:0.35;}
+  .throttle-lever{
+    position:absolute;left:50%;bottom:7px;width:22px;height:17px;margin-left:-11px;border-radius:5px;
+    background:linear-gradient(180deg,#3a3f47,#16181b 55%,#0a0b0d);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset,0 2px 4px rgba(0,0,0,0.6);
+    transition:bottom .42s cubic-bezier(.5,-0.3,.3,1.3),box-shadow .3s;
+  }
+  .throttle-lever::before{content:'';position:absolute;left:3px;right:3px;top:50%;height:2px;margin-top:-1px;
+    background:rgba(255,255,255,0.3);border-radius:2px;}
+  .throttle[data-mode="quantum"] .throttle-lever{bottom:40px;box-shadow:0 0 10px 2px var(--quantum),0 0 0 1px rgba(255,255,255,0.2) inset;}
+  .throttle[data-mode="mobile"] .throttle-lever{box-shadow:0 0 10px 2px var(--accent),0 0 0 1px rgba(255,255,255,0.2) inset;}
+  .mode-caption{
+    text-align:center;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:3px;
+    color:var(--accent);margin-top:10px;min-height:16px;transition:color .3s,text-shadow .3s;
+    text-shadow:0 0 10px currentColor;
+  }
+
+  /* ================= INSTRUMENT PANEL — round dashboard housing shared by the
+     live scan (dial) and the REAP verdict; a chronograph-style bezel, no more
+     boxed rectangular "card" ================= */
+  .panel-shell{
+    margin:20px 16px 0;padding:7px;border-radius:26px;
+    background:linear-gradient(155deg,#3a3d43 0%,#1c1e22 35%,#0a0b0d 60%,#26282d 100%);
+    box-shadow:0 10px 28px rgba(0,0,0,0.5),inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .panel{
+    position:relative;border-radius:20px;padding:20px 20px 16px;text-align:center;
+    background:radial-gradient(ellipse at 50% -10%,var(--glow) 0%,transparent 60%),
+      linear-gradient(180deg,var(--surface),var(--bg));
+    box-shadow:inset 0 0 0 1px var(--line),inset 0 0 24px rgba(0,0,0,0.35);
+  }
+
+  .dial-k{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:3px;color:var(--silver);}
+  .dial-v{font-family:var(--mono);font-size:26px;color:var(--gold-light);text-shadow:0 0 10px rgba(240,216,120,0.55);
+    font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .dial-s{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:1px;color:#fff;
+    text-shadow:0 0 8px rgba(255,255,255,0.7),0 0 2px #fff;margin-top:2px;}
+  .dial-time{margin-top:12px;font-family:var(--mono);font-size:22px;color:#fff;
+    text-shadow:0 0 10px rgba(255,255,255,0.4);letter-spacing:1px;font-variant-numeric:tabular-nums;}
+
+  .reap-title{
+    font-family:var(--mono);font-size:12px;letter-spacing:6px;font-weight:700;color:var(--gold);
+    margin-bottom:12px;
+  }
+  .verdict{display:flex;align-items:center;justify-content:center;gap:11px;}
+  .verdict-word{
+    font-family:var(--mono);font-weight:800;font-size:25px;letter-spacing:3px;text-transform:uppercase;color:#fff;
+    text-shadow:0 0 10px rgba(255,255,255,0.25);
+  }
+  .verdict.is-prime .verdict-word{color:var(--gold-light);text-shadow:0 0 16px rgba(240,216,120,0.55);}
+  .verdict.is-factored .verdict-word{color:#fff;text-shadow:0 0 12px rgba(255,255,255,0.3);}
+
+  .gem{width:16px;height:16px;flex-shrink:0;}
+  .gem-diamond{transform:rotate(45deg);border-radius:2px;
+    background:linear-gradient(135deg,#c8fee0 0%,var(--green) 45%,#1f8f57 100%);
+    box-shadow:0 0 11px 2px rgba(74,222,128,0.65),inset 0 0 4px rgba(255,255,255,0.7);}
+  .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:1px solid rgba(255,255,255,0.25);}
+  .dot.red{background:radial-gradient(circle at 35% 30%,#ffcfc9,var(--red) 60%);box-shadow:0 0 11px 2px rgba(248,113,113,0.7);}
+  .dot.grey{background:#8b8f98;box-shadow:0 0 8px 1px rgba(139,143,152,0.5);}
+  .dot.amber{background:var(--amber);box-shadow:0 0 10px 2px rgba(251,191,36,0.5);}
+  .values{display:flex;justify-content:center;margin-top:16px;}
+  .val{background:var(--surface2);border:1px solid var(--line2);border-radius:12px;padding:10px 16px;min-width:150px;max-width:100%;}
+  .val-k{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--gold);display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .val-d{font-size:11px;letter-spacing:0.5px;font-weight:700;color:#fff;text-shadow:0 0 6px rgba(255,255,255,0.6);}
+  .val-v{font-family:var(--mono);font-size:26px;color:#fff;font-weight:700;word-break:break-all;max-height:150px;overflow:auto;margin-top:4px;
+    text-shadow:0 0 8px rgba(255,255,255,0.2);}
+  .time-row{margin-top:16px;font-family:var(--mono);font-size:14px;color:#c9ccd3;}
+
+  /* ================= FOOTER ================= */
+  footer{text-align:center;margin:28px 16px 6px;}
+  .icons{display:flex;justify-content:center;gap:16px;margin-bottom:12px;}
+  .icon-btn{
+    width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);background:var(--surface);color:var(--gold-light);cursor:pointer;text-decoration:none;
+    transition:box-shadow .2s,border-color .2s;
+  }
+  .icon-btn:hover:not(:disabled){border-color:var(--gold);box-shadow:0 0 12px rgba(212,175,55,0.35);}
+  .icon-btn:disabled{opacity:0.3;cursor:not-allowed;}
+  .icon-btn svg{width:20px;height:20px;}
+  .copyright{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;}
+
+  @media (prefers-reduced-motion:reduce){
+    .drum-cabinet,.throttle-lever,.tier{transition:none;}
+    .ingot-shine{animation:none;}
+  }
+
+  /* ================= PRINT ================= */
+  #printSheet{display:none;}
+  @media print{
+    html,body{background:#fff !important;color:#000 !important;}
+    body{display:block;padding:0;}
+    .app > *:not(#printSheet){display:none !important;}
+    #printSheet{display:block !important;font-family:Georgia,serif;color:#000;padding:20mm 16mm;}
+    #printSheet h1{font-size:28pt;letter-spacing:8pt;margin:0 0 2pt;color:#8a6206;}
+    #printSheet .sub{font-family:var(--script);font-size:16pt;margin-bottom:14pt;color:#444;}
+    #printSheet .row{font-family:'Courier New',monospace;font-size:11pt;margin:6pt 0;word-break:break-all;}
+    #printSheet .verdict-p{font-size:16pt;font-weight:bold;margin:12pt 0;}
+    #printSheet .foot{margin-top:24pt;font-size:9pt;color:#555;border-top:1px solid #999;padding-top:6pt;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ HEADER ============ -->
+  <div class="header">
+    <div class="binary-field" id="binaryField" aria-hidden="true"></div>
+
+    <div class="theme-ctl">
+      <input type="range" id="themeSlider" min="0" max="100" step="1" value="0" aria-label="Color theme">
+    </div>
+
+    <button class="lang-btn" id="langBtn" type="button" aria-label="Switch language">
+      <span class="flag" id="flagUS" aria-hidden="true">
+        <svg viewBox="0 0 38 26" preserveAspectRatio="none">
+          <rect width="38" height="26" fill="#fff"/>
+          <g fill="#b22234">
+            <rect y="0" width="38" height="2"/><rect y="4" width="38" height="2"/><rect y="8" width="38" height="2"/>
+            <rect y="12" width="38" height="2"/><rect y="16" width="38" height="2"/><rect y="20" width="38" height="2"/><rect y="24" width="38" height="2"/>
+          </g>
+          <rect width="16" height="14" fill="#3c3b6e"/>
+          <g fill="#fff">
+            <circle cx="3" cy="3" r="0.8"/><circle cx="8" cy="3" r="0.8"/><circle cx="13" cy="3" r="0.8"/>
+            <circle cx="5.5" cy="7" r="0.8"/><circle cx="10.5" cy="7" r="0.8"/>
+            <circle cx="3" cy="11" r="0.8"/><circle cx="8" cy="11" r="0.8"/><circle cx="13" cy="11" r="0.8"/>
+          </g>
+        </svg>
+      </span>
+      <svg class="swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 7h13M16 3l4 4-4 4"/><path d="M17 17H4M8 13l-4 4 4 4"/>
+      </svg>
+      <span class="flag" id="flagFR" aria-hidden="true">
+        <svg viewBox="0 0 3 2" preserveAspectRatio="none">
+          <rect width="1" height="2" fill="#0055a4"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#ef4135"/>
+        </svg>
+      </span>
+    </button>
+
+    <div class="header-content">
+      <div class="brand" id="brand">
+        <div class="ingot" role="img" aria-label="WURUS">
+          <span class="ingot-layer ingot-depth" aria-hidden="true"><span id="wAnchor">W</span>URUS</span>
+          <span class="ingot-layer ingot-face" aria-hidden="true">WURUS</span>
+          <span class="ingot-layer ingot-shine" aria-hidden="true">WURUS</span>
+        </div>
+        <div class="pyr-scene" id="pyrScene" aria-hidden="true"><div class="pyr" id="pyr"></div></div>
+      </div>
+      <br>
+      <div class="matrix-flap" id="matrixFlap" role="img" aria-label="MATRIX"></div>
+      <div class="tagline" lang="en">You Reap What You Sow</div>
+      <div class="theorem-line">
+        <span data-i18n="theorem"></span>
+        <span class="cond" data-i18n="cond"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BOARD ============ -->
+  <div class="board-shell">
+    <div class="board">
+      <div class="board-top">
+        <label for="nInput">n</label>
+        <div class="board-digits" id="nDigits"></div>
+      </div>
+      <textarea id="nInput" inputmode="numeric" autocomplete="off" spellcheck="false">777</textarea>
+      <div class="board-msg" id="boardMsg"></div>
+      <div class="board-hint" data-i18n="hint"></div>
+    </div>
+  </div>
+
+  <!-- ============ ACTIONS ============ -->
+  <div class="action-row">
+    <button class="btn-reset" id="resetBtn" type="button" aria-label="Reset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 1 3 6.7"/><path d="M3 21v-6h6"/>
+      </svg>
+    </button>
+
+    <div class="sow-scene">
+      <div class="drum-cabinet" id="drumCabinet">
+        <button class="btn-mesh mesh-surface mesh-gold btn-sow" id="solveBtn" type="button" aria-label="SOW">
+          <span class="txt" aria-hidden="true">S<svg class="ufo" viewBox="0 0 48 28"><use href="#ufoShape"/></svg>W</span>
+        </button>
+        <button class="btn-mesh mesh-surface btn-stop" id="stopBtn" type="button" aria-label="Stop" hidden>
+          <span class="stop-square" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="throttle-ctl">
+      <div class="throttle-icons">
+        <svg id="iconQuantum" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="5" width="16" height="11" rx="1.4"/><path d="M2 19h20M9 19v-2.3M15 19v-2.3"/>
+        </svg>
+        <button class="throttle" id="modeBtn" type="button" role="switch" aria-checked="false" data-mode="mobile">
+          <span class="throttle-slot" aria-hidden="true"></span>
+          <span class="throttle-lever" aria-hidden="true"></span>
+        </button>
+        <svg id="iconMobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M11 18.3h2"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="mode-caption" id="modeCaption"></div>
+
+  <!-- shared saucer glyph, used as the "O" of SOW -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="ufoShape">
+        <path d="M13 14.5 C13 -0.5 35 -0.5 35 14.5 Z" fill="currentColor"/>
+        <ellipse cx="24" cy="17.5" rx="23.5" ry="7.5" fill="currentColor"/>
+        <ellipse cx="24" cy="14.6" rx="14" ry="1.4" fill="var(--ufo-light)" opacity="0.6"/>
+        <circle cx="9" cy="18.6" r="1.5" fill="var(--ufo-light)"/>
+        <circle cx="24" cy="21.4" r="1.5" fill="var(--ufo-light)"/>
+        <circle cx="39" cy="18.6" r="1.5" fill="var(--ufo-light)"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- ============ INSTRUMENT PANEL (dial while running, REAP once resolved) ============ -->
+  <div class="panel-shell" id="panelShell" hidden>
+    <div class="panel">
+      <section id="dial" hidden>
+        <div class="dial-k">p</div>
+        <div class="dial-v" id="dialP">3</div>
+        <div class="dial-s" id="dialPd"></div>
+        <div class="dial-time" id="dialT">0 h 00 min 00 s</div>
+      </section>
+
+      <section id="reapCard" hidden>
+        <div class="reap-title">REAP</div>
+        <div class="verdict" id="verdict"><span id="verdictIcon"></span><span class="verdict-word" id="verdictText"></span></div>
+        <div class="values" id="values" hidden></div>
+        <div class="time-row" id="timeRow" hidden></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer>
+    <div class="icons">
+      <button class="icon-btn" id="printBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>
+        </svg>
+      </button>
+      <a class="icon-btn" id="mailBtn" href="mailto:thierno.sow@sciencespo.fr">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M21.6 3.2 2.6 10.5c-.9.35-.87 1 .02 1.27l4.8 1.5 1.85 5.7c.22.6.55.75 1.05.34l2.65-2.5 4.85 3.6c.9.5 1.55.24 1.8-.84L23.5 4.5c.3-1.28-.5-1.87-1.9-1.3zM8.9 12.7l9.5-6c.45-.28.86-.12.52.2l-7.8 7.1-.3 3.2z"/>
+        </svg>
+      </a>
+      <a class="icon-btn" id="webBtn" href="https://www.sciencespo-alumni.fr/fr/cv/thierno-m-sow/sciences-po-paris/2008" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19"/><path d="M12 2.5c3 3 4.4 6 4.4 9.5S15 18.5 12 21.5C9 18.5 7.6 15.5 7.6 12S9 5.5 12 2.5z"/>
+        </svg>
+      </a>
+    </div>
+    <div class="copyright">&copy; Thierno M. Sow &mdash; 2026</div>
+  </footer>
+
+  <!-- print-only report -->
+  <div id="printSheet"></div>
+
+</div>
+
+<script>
+/* =====================================================================
+   ENGINE  (pure functions — no DOM)
+   Theorem: n = p² ± 2px, p > 2, x ≥ 0.
+   Relation used:  (n − p²) / p = 2x.
+   For odd n, p must be odd, and 2x is then an even integer exactly when
+   p divides n, so the modular test  n ≡ 0 (mod p)  is enough.
+   Only odd p in [3, √n] need to be tested.
+   ===================================================================== */
+/* ENGINE-START */
+function bitLen(n){ return n.toString(2).length; }
+function isqrt(n){
+  if(n < 2n) return n;
+  let x = 1n << BigInt((bitLen(n) + 1) >> 1);
+  while(true){
+    const y = (x + n / x) >> 1n;
+    if(y >= x) return x;
+    x = y;
+  }
+}
+const SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+
+function makeScan(n){
+  const lim = isqrt(n);
+  if(n <= SAFE) return {n, useNum:true, nNum:Number(n), limNum:Number(lim), p:3, found:null, done:false};
+  return {n, useNum:false, lim, p:3n, found:null, done:false};
+}
+/* Scan odd p for at most `budgetMs` (Infinity = run to completion). */
+function scanSlice(s, budgetMs){
+  const t0 = performance.now();
+  if(s.useNum){
+    const nn = s.nNum, lim = s.limNum;
+    let p = s.p;
+    while(p <= lim){
+      for(let i = 0; i < 65536 && p <= lim; i++, p += 2){
+        if(nn % p === 0){ s.p = p; s.found = BigInt(p); s.done = true; return; }
+      }
+      if(performance.now() - t0 > budgetMs){ s.p = p; return; }
+    }
+    s.p = p; s.done = true;
+  } else {
+    const n = s.n, lim = s.lim;
+    let p = s.p;
+    while(p <= lim){
+      for(let i = 0; i < 512 && p <= lim; i++, p += 2n){
+        if(n % p === 0n){ s.p = p; s.found = p; s.done = true; return; }
+      }
+      if(performance.now() - t0 > budgetMs){ s.p = p; return; }
+    }
+    s.p = p; s.done = true;
+  }
+}
+function findFactorSync(n){ const s = makeScan(n); scanSlice(s, Infinity); return s.found; }
+function twoXFromP(n, p){ return (n - p * p) / p; }      // (n − p²)/p = 2x
+function xFromP(n, p){ return twoXFromP(n, p) / 2n; }
+/* ENGINE-END */
+
+/* ---------- Web Worker (quantum mode) ---------- */
+function workerMain(){
+  self.onmessage = function(e){
+    const d = e.data;
+    const n = BigInt(d.n), start = d.start, step = d.step;
+    const lim = isqrt(n);
+    let lastPost = 0;
+    if(n <= BigInt(Number.MAX_SAFE_INTEGER)){
+      const nn = Number(n), l = Number(lim);
+      let p = start;
+      while(p <= l){
+        for(let i = 0; i < 65536 && p <= l; i++, p += step){
+          if(nn % p === 0){ postMessage({t:'found', p:String(p)}); return; }
+        }
+        const now = Date.now();
+        if(now - lastPost > 120){ lastPost = now; postMessage({t:'prog', p:String(p)}); }
+      }
+    } else {
+      const stepB = BigInt(step);
+      let p = BigInt(start);
+      while(p <= lim){
+        for(let i = 0; i < 512 && p <= lim; i++, p += stepB){
+          if(n % p === 0n){ postMessage({t:'found', p:p.toString()}); return; }
+        }
+        const now = Date.now();
+        if(now - lastPost > 120){ lastPost = now; postMessage({t:'prog', p:p.toString()}); }
+      }
+    }
+    postMessage({t:'done'});
+  };
+}
+const WORKER_SRC = [bitLen.toString(), isqrt.toString(), '(' + workerMain.toString() + ')();'].join(';\n');
+
+/* =====================================================================
+   I18N  (SOW / REAP / MOBILE / QUANTUM and the tagline are never translated)
+   ===================================================================== */
+const T = {
+  en:{
+    theorem:'If <span class="eq">p² ± 2px ≠ n</span> → <span class="eq">n is prime</span>',
+    cond:'n ≡ 0 (mod p) &nbsp;·&nbsp; 2 &lt; p &lt; n &nbsp;·&nbsp; 0 ≤ x',
+    hint:'up to 2¹¹ = 2048 digits', ph:'Paste or type n',
+    modeLabel:'Computing mode',
+    quantumOn:(w)=>`${w} threads`,
+    quantumNA:'Quantum mode unavailable here — single thread used',
+    factored:'Factored', prime:'Prime', stopped:'Stopped',
+    digit1:'digit', digitN:'digits', threads:'threads',
+    errDigits:()=>'n must be a natural number (digits only).',
+    errLong:(l)=>`n has ${l} digits — the limit is 2048 (2¹¹).`,
+    errEven:()=>'n must be odd.',
+    errFive:()=>'n cannot end in 5 (except 5 itself).',
+    errSmall:()=>'n must be at least 3.',
+    errInternal:()=>'Internal check failed.',
+    print:'Print', mail:'E-mail', web:'Alumni profile', langSwitch:'Switch language', themeLabel:'Color theme',
+    prSub:'Universal Theorem of Primes', prThm:'n = p² ± 2px,  p > 2,  x ≥ 0', prTime:'Time', prCheck:'Check', prMode:'Mode'
+  },
+  fr:{
+    theorem:'Si <span class="eq">p² ± 2px ≠ n</span> → <span class="eq">n est premier</span>',
+    cond:'n ≡ 0 (mod p) &nbsp;·&nbsp; 2 &lt; p &lt; n &nbsp;·&nbsp; 0 ≤ x',
+    hint:'jusqu\'à 2¹¹ = 2048 chiffres', ph:'Collez ou saisissez n',
+    modeLabel:'Mode de calcul',
+    quantumOn:(w)=>`${w} cœurs`,
+    quantumNA:'Mode quantum indisponible ici — un seul cœur utilisé',
+    factored:'Factorisé', prime:'Premier', stopped:'Arrêté',
+    digit1:'chiffre', digitN:'chiffres', threads:'cœurs',
+    errDigits:()=>'n doit être un entier naturel (chiffres uniquement).',
+    errLong:(l)=>`n a ${l} chiffres — la limite est 2048 (2¹¹).`,
+    errEven:()=>'n doit être impair.',
+    errFive:()=>'n ne peut pas se terminer par 5 (sauf 5 lui-même).',
+    errSmall:()=>'n doit être au moins égal à 3.',
+    errInternal:()=>'Échec du contrôle interne.',
+    print:'Imprimer', mail:'E-mail', web:'Profil Sciences Po Alumni', langSwitch:'Changer de langue', themeLabel:'Thème de couleur',
+    prSub:'Théorème universel des nombres premiers', prThm:'n = p² ± 2px,  p > 2,  x ≥ 0', prTime:'Temps', prCheck:'Vérification', prMode:'Mode'
+  }
+};
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+const $ = (id)=>document.getElementById(id);
+const nInput=$('nInput'), nDigits=$('nDigits'), boardEl=document.querySelector('.board'), boardMsg=$('boardMsg'), solveBtn=$('solveBtn'), stopBtn=$('stopBtn'), drumCabinet=$('drumCabinet'), resetBtn=$('resetBtn');
+const modeBtn=$('modeBtn'), iconMobile=$('iconMobile'), iconQuantum=$('iconQuantum'), modeCaption=$('modeCaption');
+const panelShell=$('panelShell'), dial=$('dial'), dialP=$('dialP'), dialPd=$('dialPd'), dialT=$('dialT');
+const reapCard=$('reapCard'), verdict=$('verdict'), verdictIcon=$('verdictIcon'), verdictText=$('verdictText'), valuesEl=$('values'), timeRow=$('timeRow');
+const printBtn=$('printBtn'), mailBtn=$('mailBtn'), webBtn=$('webBtn'), langBtn=$('langBtn'), printSheet=$('printSheet');
+const themeSlider=$('themeSlider');
+
+const MAX_DIGITS = 2048;
+const HW = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 32));
+const WORKERS_OK = typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && !!URL.createObjectURL;
+
+let lang = 'en';
+try{ const sv = localStorage.getItem('wurus_lang'); if(sv === 'fr' || sv === 'en') lang = sv; }catch(e){}
+let quantumOn = false, quantumFailed = false;
+let running = false, stopRequested = false;
+let lastRes = null;
+let dialState = null, dialTimer = null;
+let activeWorkers = [];
+
+/* ---------- helpers ---------- */
+function fmtDur(ms){
+  if(ms < 1000) return '< 1 s';
+  return fmtDial(ms);
+}
+function fmtDial(ms){
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+  return `${h} h ${String(m).padStart(2,'0')} min ${String(s).padStart(2,'0')} s`;
+}
+function shortNum(s){ return s.length > 13 ? s.slice(0,6) + '…' + s.slice(-4) : s; }
+function digitsLabel(len){ const t = T[lang]; return `${len} ${len === 1 ? t.digit1 : t.digitN}`; }
+
+/* ---------- sounds (Web Audio, no assets needed) ---------- */
+let audioCtx = null;
+function getAC(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    audioCtx = audioCtx || new AC();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }catch(e){ return null; }
+}
+/* refined mechanical "detent" click for the throttle — a short filtered tick, not a toy beep */
+function clickSound(){
+  const ac = getAC(); if(!ac) return;
+  const t = ac.currentTime;
+  const len = Math.max(1, Math.floor(ac.sampleRate * 0.014));
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 1.1;
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  src.connect(bp); bp.connect(g); g.connect(ac.destination);
+  src.start(t);
+}
+/* elegant ascending chime played when a full scan concludes n is prime */
+function primeChime(){
+  const ac = getAC(); if(!ac) return;
+  const t0 = ac.currentTime;
+  const notes = [880, 1108.73, 1318.51]; // A5, C#6, E6 — bright major triad, arpeggiated
+  notes.forEach((f, i) => {
+    const t = t0 + i * 0.10;
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(f, t);
+    const osc2 = ac.createOscillator(), g2 = ac.createGain();
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(f * 2, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(0.05, t + 0.02); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    osc.connect(g); g.connect(ac.destination); osc2.connect(g2); g2.connect(ac.destination);
+    osc.start(t); osc.stop(t + 0.95); osc2.start(t); osc2.stop(t + 0.75);
+  });
+}
+
+/* ---------- language ---------- */
+function applyLang(){
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t[el.dataset.i18n]; });
+  nInput.placeholder = t.ph;
+  $('flagUS').classList.toggle('active', lang === 'en');
+  $('flagFR').classList.toggle('active', lang === 'fr');
+  langBtn.title = t.langSwitch;
+  themeSlider.title = t.themeLabel; themeSlider.setAttribute('aria-label', t.themeLabel);
+  printBtn.title = t.print; printBtn.setAttribute('aria-label', t.print);
+  mailBtn.title = 'thierno.sow@sciencespo.fr'; mailBtn.setAttribute('aria-label', t.mail);
+  webBtn.title = t.web; webBtn.setAttribute('aria-label', t.web);
+  updateNDigits();
+  updateModeUI();
+  renderResult();
+}
+langBtn.onclick = () => {
+  lang = lang === 'en' ? 'fr' : 'en';
+  try{ localStorage.setItem('wurus_lang', lang); }catch(e){}
+  applyLang();
+  if(window.flapAll) window.flapAll();
+};
+
+/* ---------- digit counter + real-time rejection signal on the white board ---------- */
+function updateNDigits(){
+  const raw = nInput.value.replace(/[\s,_']/g, '').replace(/^0+(?=\d)/, '');
+  nDigits.textContent = /^[0-9]+$/.test(raw) && raw.length ? digitsLabel(raw.length) : '';
+
+  const t = T[lang];
+  const chk = boardCheck(nInput.value);
+  boardEl.classList.toggle('rejected', !!chk.key);
+  boardMsg.textContent = chk.key ? t[chk.key]() : '';
+}
+nInput.addEventListener('input', updateNDigits);
+
+/* ---------- MOBILE / QUANTUM throttle lever ---------- */
+function updateModeUI(){
+  const t = T[lang];
+  modeBtn.dataset.mode = quantumOn ? 'quantum' : 'mobile';
+  modeBtn.setAttribute('aria-checked', String(quantumOn));
+  modeBtn.setAttribute('aria-label', `${t.modeLabel}: ${quantumOn ? 'QUANTUM' : 'MOBILE'}`);
+  modeBtn.title = `${t.modeLabel}: MOBILE / QUANTUM`;
+  modeBtn.disabled = running || !WORKERS_OK;
+  iconMobile.classList.toggle('on', !quantumOn);
+  iconQuantum.classList.toggle('on', quantumOn);
+  if(!WORKERS_OK || quantumFailed){ modeCaption.textContent = t.quantumNA; modeCaption.style.color = 'var(--muted)'; }
+  else { modeCaption.textContent = quantumOn ? `QUANTUM · ${HW} ${t.threads}` : 'MOBILE'; modeCaption.style.color = ''; }
+}
+modeBtn.onclick = () => {
+  if(running || !WORKERS_OK) return;
+  quantumOn = !quantumOn; quantumFailed = false;
+  updateModeUI();
+  clickSound();
+};
+
+/* ---------- dial ---------- */
+function refreshDial(){
+  if(!dialState) return;
+  const ps = dialState.p.toString();
+  dialP.textContent = shortNum(ps); dialPd.textContent = digitsLabel(ps.length);
+  dialT.textContent = fmtDial(performance.now() - dialState.t0);
+}
+function startDial(n){
+  dialState = {n, p:3n, t0:performance.now()};
+  panelShell.hidden = false; reapCard.hidden = true; dial.hidden = false;
+  refreshDial();
+  clearInterval(dialTimer);
+  dialTimer = setInterval(refreshDial, 100);
+}
+function stopDial(){ clearInterval(dialTimer); dialTimer = null; dial.hidden = true; dialState = null; }
+
+/* ---------- run state: SOW flips to STOP like a drum-cabinet door ---------- */
+function setRunningUI(r){
+  running = r;
+  drumCabinet.classList.add('flipping');
+  clearTimeout(setRunningUI._t);
+  setRunningUI._t = setTimeout(() => {
+    solveBtn.hidden = r; stopBtn.hidden = !r;
+    drumCabinet.classList.remove('flipping');
+  }, 230);
+  nInput.readOnly = r;
+  resetBtn.disabled = r;
+  updateModeUI();
+}
+
+function validate(rawInput){
+  const raw = rawInput.replace(/[\s,_']/g, '').replace(/^0+(?=\d)/, '');
+  if(!/^[0-9]+$/.test(raw)) return {key:'errDigits'};
+  if(raw.length > MAX_DIGITS) return {key:'errLong', arg:raw.length};
+  const n = BigInt(raw);
+  if(n < 3n) return {key:'errSmall'};
+  if(n % 2n === 0n) return {key:'errEven'};
+  if(raw !== '5' && raw[raw.length - 1] === '5') return {key:'errFive'};
+  return {n};
+}
+
+/* Real-time board check: only n ending in 1,3,7,9 (or n=5) can ever be prime
+   under this theorem, so the board rejects anything else as it is typed —
+   including a leading zero, which is never a valid natural-number digit. */
+function boardCheck(rawInput){
+  const hasLeadingZero = /^0\d/.test(rawInput.replace(/[\s,_']/g, ''));
+  const raw = rawInput.replace(/[\s,_']/g, '').replace(/^0+(?=\d)/, '');
+  if(!raw) return {key:null};
+  if(hasLeadingZero) return {key:'errDigits'};
+  if(!/^[0-9]+$/.test(raw)) return {key:'errDigits'};
+  const n = BigInt(raw);
+  if(n % 2n === 0n) return {key:'errEven'};
+  if(raw !== '5' && raw[raw.length - 1] === '5') return {key:'errFive'};
+  return {key:null};
+}
+
+function finish(n, t0, threads, res){
+  stopDial();
+  setRunningUI(false);
+  lastRes = Object.assign({n, ms: performance.now() - t0, threads}, res);
+  if(lastRes.kind === 'factored'){
+    const p = lastRes.p;
+    const twoX = twoXFromP(n, p);
+    lastRes.twoX = twoX; lastRes.x = twoX / 2n;
+    // self-check of the theorem identity: p² + p·(2x) = n, with 2x even and ≥ 0
+    if(!(twoX >= 0n && twoX % 2n === 0n && p * p + p * twoX === n)) lastRes = {kind:'error', key:'errInternal'};
+  }
+  if(lastRes.kind === 'prime') primeChime();
+  renderResult();
+}
+
+function runSingle(n, t0){
+  const s = makeScan(n);
+  (function step(){
+    if(stopRequested){ finish(n, t0, 1, {kind:'stopped'}); return; }
+    scanSlice(s, 30);
+    dialState.p = BigInt(s.p);
+    if(s.done){
+      if(s.found) finish(n, t0, 1, {kind:'factored', p:s.found});
+      else finish(n, t0, 1, {kind:'prime'});
+      return;
+    }
+    setTimeout(step, 0);
+  })();
+}
+
+function killWorkers(){ activeWorkers.forEach(w => { try{ w.terminate(); }catch(e){} }); activeWorkers = []; }
+
+function runQuantum(n, t0){
+  const W = HW;
+  let url, workers = [];
+  try{
+    url = URL.createObjectURL(new Blob([WORKER_SRC], {type:'text/javascript'}));
+    for(let i = 0; i < W; i++) workers.push(new Worker(url));
+  }catch(e){
+    workers.forEach(w => { try{ w.terminate(); }catch(_){} });
+    if(url) URL.revokeObjectURL(url);
+    quantumFailed = true; updateModeUI();
+    runSingle(n, t0);
+    return;
+  }
+  activeWorkers = workers;
+  const prog = new Array(W).fill(0n).map((_, i) => BigInt(3 + 2 * i));
+  let doneCount = 0, ended = false;
+  const end = (res) => {
+    if(ended) return; ended = true;
+    killWorkers(); URL.revokeObjectURL(url); clearInterval(stopPoll);
+    finish(n, t0, W, res);
+  };
+  const stopPoll = setInterval(() => { if(stopRequested) end({kind:'stopped'}); }, 50);
+  workers.forEach((w, i) => {
+    w.onmessage = (e) => {
+      const m = e.data;
+      if(m.t === 'found'){ end({kind:'factored', p:BigInt(m.p)}); }
+      else if(m.t === 'prog'){
+        prog[i] = BigInt(m.p);
+        let lo = prog[0]; for(const v of prog) if(v < lo) lo = v;
+        if(dialState) dialState.p = lo;
+      } else if(m.t === 'done'){
+        if(++doneCount === W) end({kind:'prime'});
+      }
+    };
+    w.onerror = () => {
+      if(ended) return;
+      ended = true; clearInterval(stopPoll); killWorkers(); URL.revokeObjectURL(url);
+      quantumFailed = true; updateModeUI();
+      runSingle(n, t0);
+    };
+    w.postMessage({n:n.toString(), start:3 + 2 * i, step:2 * W});
+  });
+}
+
+solveBtn.onclick = () => {
+  if(running) return;
+  const v = validate(nInput.value);
+  if(!v.n){
+    lastRes = {kind:'error', key:v.key, arg:v.arg};
+    renderResult();
+    return;
+  }
+  lastRes = null; renderResult();
+  stopRequested = false;
+  setRunningUI(true);
+  const t0 = performance.now();
+  startDial(v.n);
+  if(quantumOn && WORKERS_OK && !quantumFailed) runQuantum(v.n, t0);
+  else runSingle(v.n, t0);
+};
+stopBtn.onclick = () => { stopRequested = true; };
+
+resetBtn.onclick = () => {
+  if(running) return;
+  nInput.value = '';
+  updateNDigits();
+  lastRes = null;
+  renderResult();
+  nInput.focus();
+};
+nInput.addEventListener('keydown', (e) => { if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) solveBtn.click(); });
+
+/* ---------- REAP rendering (x is intentionally NOT shown here — printed report only) ---------- */
+function valBox(k, big){
+  const s = big.toString();
+  const box = document.createElement('div'); box.className = 'val';
+  const kk = document.createElement('div'); kk.className = 'val-k';
+  const a = document.createElement('span'); a.textContent = k;
+  const b = document.createElement('span'); b.className = 'val-d'; b.textContent = digitsLabel(s.length);
+  kk.appendChild(a); kk.appendChild(b);
+  const vv = document.createElement('div'); vv.className = 'val-v'; vv.textContent = s;
+  box.appendChild(kk); box.appendChild(vv);
+  return box;
+}
+function setVerdict(kind, text){
+  verdict.className = 'verdict' + (kind === 'prime' ? ' is-prime' : kind === 'factored' ? ' is-factored' : '');
+  verdictIcon.innerHTML = kind === 'prime'
+    ? '<span class="gem gem-diamond" aria-hidden="true"></span>'
+    : `<span class="dot ${kind === 'factored' ? 'red' : kind === 'error' ? 'amber' : 'grey'}" aria-hidden="true"></span>`;
+  verdictText.textContent = text;
+}
+
+function renderResult(){
+  const t = T[lang];
+  const r = lastRes;
+  if(!r){
+    reapCard.hidden = true; printBtn.disabled = true; printSheet.innerHTML = '';
+    if(dial.hidden) panelShell.hidden = true;
+    return;
+  }
+  panelShell.hidden = false; dial.hidden = true; reapCard.hidden = false;
+  valuesEl.hidden = true; valuesEl.innerHTML = '';
+  timeRow.hidden = true;
+
+  if(r.kind === 'error'){
+    setVerdict('error', t[r.key](r.arg));
+    printBtn.disabled = true; printSheet.innerHTML = '';
+    return;
+  }
+  const dur = fmtDur(r.ms) + (r.threads > 1 ? ` · ${r.threads} ${t.threads}` : '');
+  timeRow.textContent = '⏱ ' + dur; timeRow.hidden = false;
+
+  if(r.kind === 'factored'){
+    setVerdict('factored', t.factored);
+    valuesEl.appendChild(valBox('p', r.p));
+    valuesEl.hidden = false;
+  } else if(r.kind === 'prime'){
+    setVerdict('prime', t.prime);
+  } else {
+    setVerdict('stopped', t.stopped);
+  }
+  printBtn.disabled = false;
+  fillPrint(r, dur);
+}
+
+function fillPrint(r, dur){
+  const t = T[lang];
+  const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const verdictLabel = r.kind === 'factored' ? t.factored : r.kind === 'prime' ? t.prime : t.stopped;
+  let rows = `<div class="row">n = ${esc(r.n)}</div>`;
+  if(r.kind === 'factored'){
+    rows += `<div class="row">p = ${esc(r.p)}</div>`;
+    rows += `<div class="row">2x = (n − p²) / p = ${esc(r.twoX)}</div>`;
+    rows += `<div class="row">x = ${esc(r.x)}</div>`;
+    rows += `<div class="row">${esc(t.prCheck)} : p² + p·(2x) = n ✓</div>`;
+  }
+  printSheet.innerHTML =
+    `<h1>WURUS MATRIX</h1><div class="sub">You Reap What You Sow</div>` +
+    `<div class="row">${esc(t.prSub)} — ${esc(t.prThm)}</div>` + rows +
+    `<div class="verdict-p">${esc(verdictLabel)}</div>` +
+    `<div class="row">${esc(t.prMode)} : ${r.threads > 1 ? 'QUANTUM' : 'MOBILE'}</div>` +
+    `<div class="row">${esc(t.prTime)} : ${esc(dur)}</div>` +
+    `<div class="foot">© Thierno M. Sow — 2026 — thierno.sow@sciencespo.fr</div>`;
+}
+printBtn.onclick = () => { if(!printBtn.disabled) window.print(); };
+
+/* ---------- colour theme: deep turquoise blue → rose violet → dark noble red ---------- */
+const THEME_ANCHORS = [
+  {bg:[197,74,6],  bg2:[200,70,9],  surface:[195,68,11], surface2:[198,76,4],   line:[190,60,21], line2:[192,55,15], glow:[186,90,45], accent:[186,90,62]},
+  {bg:[284,52,8],  bg2:[290,48,12], surface:[287,42,15], surface2:[285,55,5],   line:[300,38,29], line2:[295,35,20], glow:[315,80,58], accent:[312,85,74]},
+  {bg:[352,68,7],  bg2:[352,60,11], surface:[352,52,13], surface2:[350,68,4.5], line:[352,48,26], line2:[351,44,18], glow:[352,78,46], accent:[352,85,68]}
+];
+function lerpHsl(a, b, t){
+  const dh = ((b[0] - a[0] + 540) % 360) - 180;              // shortest hue path
+  return [(a[0] + dh * t + 360) % 360, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+function hslCss(c){ return `hsl(${c[0].toFixed(1)} ${c[1].toFixed(1)}% ${c[2].toFixed(1)}%)`; }
+function hslHex(c){
+  const h = c[0], s = c[1] / 100, l = c[2] / 100;
+  const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+}
+function applyTheme(v){
+  const seg = v <= 50 ? 0 : 1, t = seg === 0 ? v / 50 : (v - 50) / 50;
+  const A = THEME_ANCHORS[seg], B = THEME_ANCHORS[seg + 1];
+  const style = document.documentElement.style, mix = {};
+  Object.keys(A).forEach(k => { mix[k] = lerpHsl(A[k], B[k], t); style.setProperty('--' + k, hslCss(mix[k])); });
+  style.setProperty('--glow', `hsl(${mix.glow[0].toFixed(1)} ${mix.glow[1].toFixed(1)}% ${mix.glow[2].toFixed(1)}% / 0.16)`);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', hslHex(mix.bg));
+}
+themeSlider.addEventListener('input', () => {
+  let v = Number(themeSlider.value);
+  for(const anchor of [0, 50, 100]) if(Math.abs(v - anchor) <= 3){ v = anchor; themeSlider.value = String(anchor); }
+  applyTheme(v);
+  try{ localStorage.setItem('wurus_theme', String(v)); }catch(e){}
+});
+(function initTheme(){
+  let v = 0;
+  try{ const sv = Number(localStorage.getItem('wurus_theme')); if(Number.isFinite(sv) && sv >= 0 && sv <= 100) v = sv; }catch(e){}
+  themeSlider.value = String(v);
+  applyTheme(v);
+})();
+
+/* ---------- header decorations ---------- */
+(function binaryBackdrop(){
+  let out = '';
+  for(let r = 0; r < 12; r++){
+    let line = '';
+    for(let c = 0; c < 70; c++) line += Math.random() > 0.5 ? '1' : '0';
+    out += line + '\n';
+  }
+  $('binaryField').textContent = out;
+})();
+
+/* MATRIX — split-flap (airport board) */
+(function splitFlap(){
+  const box = $('matrixFlap'), word = 'MATRIX', chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ01';
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cells = [...word].map(ch => {
+    const tile = document.createElement('span'); tile.className = 'tile'; tile.setAttribute('aria-hidden', 'true');
+    const c = document.createElement('span'); c.className = 'ch'; c.textContent = ch;
+    tile.appendChild(c); box.appendChild(tile); return c;
+  });
+  window.flapAll = function(){
+    if(reduce) return;
+    cells.forEach((c, i) => {
+      let k = 0; const total = 9 + i * 3;
+      setTimeout(function tick(){
+        k++; const last = k >= total;
+        c.classList.remove('flip'); void c.offsetWidth; c.classList.add('flip');
+        setTimeout(() => { c.textContent = last ? word[i] : chars[(Math.random() * chars.length) | 0]; }, 45);
+        if(!last) setTimeout(tick, 95 + Math.random() * 35);
+      }, i * 110);
+    });
+  };
+  setTimeout(window.flapAll, 400);
+  setInterval(window.flapAll, 9000);
+})();
+
+/* Pyramid under the W: three tiers that twist like Rubik's-cube layers */
+(function pyramid(){
+  const root = $('pyr'), scene = $('pyrScene'), brand = $('brand'), anchor = $('wAnchor');
+  const widths = [34, 24, 14], H = 9;
+  const tiers = widths.map((w, i) => {
+    const tier = document.createElement('div'); tier.className = 'tier';
+    tier.style.setProperty('--w', w + 'px');
+    tier.style.bottom = (4 + i * H) + 'px';
+    ['front', 'right', 'back', 'left', 'top'].forEach(face => {
+      const f = document.createElement('div'); f.className = 'f ' + face; tier.appendChild(f);
+    });
+    root.appendChild(tier);
+    return tier;
+  });
+  const angle = [0, 0, 0], order = [0, 2, 1, 0, 1, 2];
+  let step = 0;
+  function twist(){
+    const i = order[step % order.length];
+    angle[i] += (step % 2 ? -90 : 90);
+    tiers[i].style.transform = `rotateY(${angle[i]}deg)`;
+    step++;
+  }
+  window.twistPyramid = twist;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce) setInterval(twist, 1300);
+  function place(){
+    const a = anchor.getBoundingClientRect(), b = brand.getBoundingClientRect();
+    scene.style.left = (a.left - b.left + a.width / 2) + 'px';
+  }
+  place();
+  window.addEventListener('resize', place);
+  window.addEventListener('load', place);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+})();
+
+applyLang();
+</script>
+</body>
+</html>
